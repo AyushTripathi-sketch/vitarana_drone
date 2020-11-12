@@ -22,7 +22,7 @@ class image_proc():
 
 	# Initialise everything
 	def __init__(self):
-		rospy.init_node('barcode_test', anonymous=True) #Initialise rosnode 
+		rospy.init_node('barcode_test', anonymous=True, disable_signals=False) #Initialise rosnode 
 		rospy.Subscriber("/edrone/camera/image_raw", Image, self.image_callback) #Subscribing to the camera topic
 		self.new_pub = rospy.Publisher('/setpoint_dec', NavSatFix, queue_size=10)
 		self.img = np.empty([]) # This will contain your image frame from camera
@@ -82,7 +82,7 @@ class image_proc():
 			self.command.longitude = float(setpoint[1])
 			self.command.altitude = float(setpoint[2])
 			self.new_pub.publish(self.command)
-			rospy.Rate(1/100).sleep()
+			rospy.Rate(0.01).sleep()
 			rospy.signal_shutdown("Location Scanned and Published")
 
 if __name__ == '__main__':
