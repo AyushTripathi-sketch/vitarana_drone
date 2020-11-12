@@ -30,7 +30,7 @@ class PositionControl():
 
 		#This correspond to the position coordinates of the point the edrone has to reach
 		#[lat, lon, alt]
-		self.setpoint = [19.0,72.0,3.0]
+		self.setpoint = [19.0,72.0,1.26]
 
 		#This corresponds to the current position coordinates of the edrone
 		#[lat, lon, alt]
@@ -63,7 +63,7 @@ class PositionControl():
 		self.command.rcYaw = 1500.0
 		self.command.rcThrottle = 1000.0
 
-		# This is the sample time for which pid will run
+		# This is the sample time in which pid is run
 		self.sample_time = 0.060
 
 		# Initializing the values to be sent for [rcPitch, rcRoll, rcThrottle]
@@ -84,6 +84,7 @@ class PositionControl():
 		rospy.Subscriber('pid_tuning_altitude', PidTune, self.throttle_pid_tune)
 		rospy.Subscriber('/pid_tuning_roll', PidTune, self.roll_set_pid)
 		rospy.Subscriber('/pid_tuning_pitch', PidTune, self.pitch_set_pid)
+		rospy.Subscriber('/setpoint_dec', NavSatFix, self.set_position)
 
 
 	# function to check if error between the current position coordinates and setpoint is low enough to be ignored
@@ -123,14 +124,18 @@ class PositionControl():
 		self.Ki[2] = msg.Ki * 0.008
 		self.Kd[2] = msg.Kd * 0.3
 
+	def set_position(self, msg):
+		self.setpoint[0] = msg.latitude
+		self.setpoint[1] = msg.longitude
+		self.setpoint[2] = msg.altitude
 	
 
 	def pid(self):
 
 		# calculating the error in lat, lon and alt and rescaling the error in lat, lon so that it corresponds to roughly in metres
 		error = [(x1-x2) for (x1,x2) in zip(self.setpoint, self.position)]
-		error[0] = error[0] * 111000 #a multiplying factor to magnify the error in latitude to check the bugs
-		error[1] = error[1] * 111000 #a multiplying factor to magnify the error in longitude to check the bugs
+		error[0] = error[0] * 111000
+		error[1] = error[1] * 111000
 		print("\n")
 		print(error[2])
 		print("\n")
@@ -139,20 +144,20 @@ class PositionControl():
 		# here, it is checked if the edrone has reached the setpoint and been stable for some time
 		# also the setpoint is changed to the next setpoint if the edrone has reached the required point
 		# if the edrone has reached the final setpoint, the has_reached flag is set to True
-		if self.check_error(error):
-			self.count += 1
-			print(self.count)
-			if self.count>=30:
-				self.count = 0
-				if 19.0000451704-self.setpoint[0]>1e-9:
-					self.setpoint = [19.0000451704, 72.0, 3.0]
-				elif abs(19.0000451704-self.setpoint[0])<1e-9 and abs(3.0-self.setpoint[2])<1e-7:
-					self.setpoint = [19.0000451704, 72.0, 0.31]
-				else:
-					self.has_reached = True
+		# if self.check_error(error):
+		# 	self.count += 1
+		# 	print(self.count)
+		# 	if self.count>=30:
+		# 		self.count = 0
+		# 		if 19.0000451704-self.setpoint[0]>1e-9:
+		# 			self.setpoint = [19.0000451704, 72.0, 3.0]
+		# 		elif abs(19.0000451704-self.setpoint[0])<1e-9 and abs(3.0-self.setpoint[2])<1e-7:
+		# 			self.setpoint = [19.0000451704, 72.0, 0.31]
+		# 		else:
+		# 			self.has_reached = True
 					
-		else:
-			self.count = 0
+		# else:
+		# 	self.count = 0
 
 		
 		# calculation of the differential error
