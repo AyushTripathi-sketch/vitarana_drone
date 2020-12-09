@@ -33,19 +33,27 @@ class PositionControl():
 
 		#This correspond to the position coordinates of the point the edrone has to reach
 		#[lat, lon, alt]
-		self.target_set = [[19.0009248718,71.9998318945,27],[19.0007046575, 71.9998955286, 27.0],
-		               [19.0007046575,71.9998955286,22.1599967919],
-		               [19.0007046575, 71.9998955286, 27.0],
-		               [19.0,72.0,20.44],[19.0,72.0,16.44],[19.0,72.0,8.44],[19.0,72.0,8.44]]
-		
+		self.safe_alt = 27.0 #altitude at which drone will traverse for safety
+		#variable to store the position decoded from the QR code
 		self.setpoint_des = [0.0,0.0,0.0]
-		self.chk_no = 1
+		#list to store the target locations
+		self.target_set = [[19.0009248718,71.9998318945,self.safe_alt],[19.0007046575, 71.9998955286, self.safe_alt],
+		                  [19.0007046575,71.9998955286,22.1599967919],
+		                  [19.0007046575,71.9998955286,self.safe_alt],
+		                  [self.setpoint_des[0],self.setpoint_des[1],self.safe_alt],
+		                  [self.setpoint_des[0],self.setpoint_des[1],self.safe_alt-10],
+		                  [self.setpoint_des[0],self.setpoint_des[1],self.setpoint_des[2]]]
+		#variable to store the setpoints generated
 		self.setpoint = [19.0009248718,71.9998318945,27]
+		#variable to set the targets from the target_set
+		self.chk_no = 1
+		#varible to store the next target from the target_set at which drone has to reach
 		self.target = self.target_set[self.chk_no]
 		#This corresponds to the current position coordinates of the edrone
 		#[lat, lon, alt]
 		self.position = [19.0,72.0,0.31]
-		self.ob = [0.0,0.0,0.0,0.0,0.0]
+		self.ob_dis = [0.0,0.0,0.0,0.0,0.0]
+		
 		#setting of Kp, Ki and Kd for [alt, lon, lat]
 		self.Kp = [7.68,0.73,0.73]
 		self.Ki = [0.032,100.0,100.0]
@@ -64,7 +72,9 @@ class PositionControl():
 		# variables to store the differential error and sum of errors for pid tuning
 		self.prev_error = [0.0,0.0,0.0]
 		self.e_sum = [0.0,0.0,0.0]
-		self.a = 0
+		#some constants to determine the distance at which next Setpoint is to be set
+		self.a = 4
+		self.p = 11
 		# Declaring command of message type edrone_cmd and initializing the values
 		self.command = edrone_cmd()
 		self.command.rcRoll = 1500.0
@@ -95,27 +105,10 @@ class PositionControl():
 		rospy.Subscriber('/pid_tuning_pitch', PidTune, self.pitch_set_pid)
 		rospy.Subscriber('/setpoint_dec', NavSatFix, self.set_position)
 		rospy.Subscriber('edrone/range_finder_top',LaserScan,self.obstacle_callback)
+		#Defining the Gripper Service
 		self.service_name  = "/edrone/activate_gripper"
 		self.srv_class = rosservice.get_service_class_by_name(self.service_name)
-			
 
-	# function to check if error between the current position coordinates and setpoint is low enough to be ignored
-	# it is called from the pid() function
-	def check_error(self, error):
-		if(abs(self.target[0] - self.setpoint[0])< 1e-7 ):
-			if abs(error[0])<0.05 and abs(error[1])<0.05 and abs(error[2])<0.008:
-				return True
-			else:
-				return False
-		else:
-			if abs(error[0])<0.5 and abs(error[1])<0.5 and abs(error[2])<0.008:
-				return True
-			else:
-				return False
-
-	def obstacle_callback(self,msg):
-		self.ob = msg.ranges
-		print(self.ob[3],self.ob[0])
 	# gps callback function 
 	# this function gets executed each time when gps publishes to 'edrone/gps'
 	def gps_callback(self, msg):
@@ -146,9 +139,59 @@ class PositionControl():
 	def set_position(self, msg):
 		self.setpoint_des[0] = msg.latitude
 		self.setpoint_des[1] = msg.longitude
-		self.setpoint_des[2] = msg.altitude
-	
+		self.setpoint_des[2] = msg.altitude\
 
+	def obstacle_callback(self,msg):
+		self.ob_dis = msg.ranges
+		print(self.ob_dis[3],self.ob_dis[0])
+
+	def check_error(self, error):
+		if(abs(self.target[0] - self.setpoint[0])< 1e-7 ):
+			if abs(error[0])<0.05 and abs(error[1])<0.05 and abs(error[2])<0.05:
+				return True
+			else:
+				return False
+		else:
+			if abs(error[0])<2 and abs(error[1])<2 and abs(error[2])<0.08:
+				return True
+			else:
+				return False
+
+	def path_planning(self,error):
+
+		#Drone tries to move on the straight line between the cuurrent position and target
+		#On obstacle detection it moves towards the setpoints where the obstacle is not present
+		#Drone moves with steps towards the target decided by the slope of the line and some constants(step distance)	
+		if self.check_error(error):
+			self.count += 1
+		 	print(self.count)
+		 	if self.count>=10:
+				self.count = 0
+		 		
+		 		#Checking if it has attained safe altitude
+		 		if abs(self.position[2]-self.safe_alt)<0.08 and abs(self.target[0] - self.setpoint[0])*111000 > 17:
+		 			#Checking the Obstacle presence
+		 			if self.ob_dis[3]<15 and self.ob_dis[3]>1:
+		 				self.a = self.a*3.3
+		 				#calculate the angle of the line between target and current position  
+						angle = math.atan2(self.target[1]-self.position[1],self.target[0]-self.position[0])
+				 		self.setpoint[1] = self.setpoint[1] + self.a*math.sin(angle)/111000
+				 	#Checking if it is close to the target
+		 			elif(abs(self.target[0] - self.setpoint[0])*111000) > 5:
+		 				if(self.chk_no == 4 and self.ob_dis[3]>30):
+		 					self.p = 21
+		 				#calculate the angle of the line between target and current position
+		 				angle = math.atan2(self.target[1]-self.position[1],self.target[0]-self.position[0])
+		 				self.setpoint[0] = self.setpoint[0] + self.p*math.cos(angle)/111000
+		 				self.setpoint[1] = self.setpoint[1] + self.p*math.sin(angle)/111000
+		 		#Checking if it has reached final setpoint
+		 		elif abs(self.position[2] - self.setpoint_des[2])<0.08:
+		 			self.has_reached=True
+		 		#Updating the target to next value after reaching the current target
+		 		else:
+		 			self.setpoint = self.target
+		 			self.chk_no += 1
+		 			self.target = self.target_set[self.chk_no]
 	def pid(self):
 
 		# calculating the error in lat, lon and alt and rescaling the error in lat, lon so that it corresponds to roughly in metres
@@ -158,63 +201,21 @@ class PositionControl():
 		print("\n")
 		#print(error[2])
 		print("\n")
-
-		#if(self.setpoint_des[0]!=0 and self.flag==0 and self.check_error(error)):
-			#self.setpoint=[19.0007046575,71.9998955286,22.1599967919]
-			#self.flag==1
-			
+		
+		#Calling the Gripper service to attach the package	
 		req = self.srv_class._request_class(activate_gripper=True)
 		# if needed set any arguments here
-		#rospy.loginfo(req)
+		rospy.loginfo(req)
 		rospy.wait_for_service(self.service_name)
 		srv_client = rospy.ServiceProxy(self.service_name, self.srv_class)
 		resp = srv_client(req)
-		#rospy.loginfo(resp)
+		rospy.loginfo(resp)
 		if(resp.result==True and self.flag == 0):
 			print('package recieved')
 			self.flag=1
-			#self.setpoint_set.append(self.setpoint_des)
 			
-		# here, it is checked if the edrone has reached the setpoint and been stable for some time
-		# also the setpoint is changed to the next setpoint if the edrone has reached the required point
-		# if the edrone has reached the final setpoint, the has_reached flag is set to True
-		if self.check_error(error):
-			self.count += 1
-		 	print(self.count)
-		 	if self.count>=10:
-				self.count = 0
-		 		
-		 		if abs(self.position[2]-27.0)<0.008 and abs(self.target[0] - self.setpoint[0])*111000 > 5:
-		 			if self.ob[3]<8 and self.ob[3]>1:
-			 			self.a = self.a + 5
-						angle = math.atan2(self.target[1]-self.position[1],self.target[0]-self.position[0])
-				 		self.setpoint[1] = self.setpoint[1] + self.a*math.sin(angle)/111000
-				 	elif self.ob[0]<3 and self.ob[0]>1:
-			 			self.a = self.a + 5
-						angle = math.atan2(self.target[1]-self.position[1],self.target[0]-self.position[0])
-				 		self.setpoint[1] = self.setpoint[1] + self.a*math.sin(angle)/111000
-				 	elif self.ob[3]<10 and self.ob[3]>1:
-						angle = math.atan2(self.target[1]-self.position[1],self.target[0]-self.position[0])
-						self.setpoint[0] = self.setpoint[0] + 2*math.cos(angle)/111000
-				 		self.setpoint[1] = self.setpoint[1] + 2*math.sin(angle)/111000
-				 	
-		 			elif(abs(self.target[0] - self.setpoint[0])*111000) > 5:
-		 				angle = math.atan2(self.target[1]-self.position[1],self.target[0]-self.position[0])
-		 				self.setpoint[0] = self.setpoint[0] + 8*math.cos(angle)/111000
-		 				self.setpoint[1] = self.setpoint[1] + 8*math.sin(angle)/111000
-		 		elif abs(self.position[2] - 8.44)<0.008:
-		 			self.has_reached=True
-		 		else:
-		 			self.setpoint = self.target
-		 			self.chk_no += 1
-		 			self.target = self.target_set[self.chk_no] 
-
-					
-					
-		# else:
-		# 	self.count = 0
-
-		
+		# Calling the path planning function to calculate setpoints for reaching the target
+		self.path_planning(error)
 		# calculation of the differential error
 		d_error = [x1-x2 for (x1,x2) in zip(error, self.prev_error)]
 
