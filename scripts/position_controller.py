@@ -18,7 +18,7 @@ CODE MODULARITY AND TECHNIQUES MENTIONED LIKE THIS WILL HELP YOU GAINING MORE MA
 # Importing the required libraries
 from vitarana_drone.msg import *
 from pid_tune.msg import PidTune
-from std_msgs.msg import Float32
+from std_msgs.msg import Float64
 from sensor_msgs.msg import NavSatFix
 import rospy
 import time
@@ -31,20 +31,26 @@ class PositionControl():
 
 		#This correspond to the position coordinates of the point the edrone has to reach
 		#[lat, lon, alt]
-		self.setpoint_set = [[19.0,72.0,10.0],[19.00007, 72.0, 10.0],
-		                     [19.00007,72.0,5],[19.00007,72.0,0.31],[19.00007,72.0,0.31]]
+		self.setpoint_set = [[18.999241138, 71.9998195507,28.0],[18.9990965928,72.0000664814,28.0],
+						   [18.9990965928,72.0000664814,11.75],[18.9990965928,72.0000664814,28.0],
+						   [18.99904058168,72.000125365639,28.0],[18.9990965925,71.9999050292,28.0],
+						   [18.9990965925,71.9999050292,23.2],[18.9990965925,71.9999050292,33.2],
+						   [18.999155314393,71.999813281176,33.2],[18.9993675932,72.0000569892,33.2],
+						   [18.9993675932,72.0000569892,11.7],[18.9993675932,72.0000569892,21.7],
+						   [18.999354063937,71.999956311974,21.7],[18.999354063937,71.999956311974,10.7],
+						   [18.999354063937,71.999956311974,10.7]]
 		
 		self.setpoint_des = [0.0,0.0,0.0]
-		self.setpoint = [19.0,72.0,10.0]
+		self.setpoint = [18.999241138, 71.9998195507,28.0]
 		#This corresponds to the current position coordinates of the edrone
 		#[lat, lon, alt]
 		self.position = [19.0,72.0,0.31]
 
 		
 		#setting of Kp, Ki and Kd for [alt, lon, lat]
-		self.Kp = [7.68,0.84,0.84]
-		self.Ki = [0.032,0.0,0.0]
-		self.Kd = [100.2,35.0,37.0]
+		self.Kp = [7.68,0.73,0.73]
+		self.Ki = [0.032,100.0,100.0]
+		self.Kd = [100.2,50.0,55.0]
 
 		#counter variable to count the time the edrone has been on a specific target setpoint for
 		self.count = self.check_point_no = self.flag = 0
@@ -77,11 +83,11 @@ class PositionControl():
 
 		# pubishing '/drone_command', 'throttle_error', 'lat_error', 'lon_error', '/reached'
 		self.cmd_pub = rospy.Publisher('/drone_command', edrone_cmd, queue_size=10)
-		self.throttle_pub = rospy.Publisher('throttle_error', Float32, queue_size=10)
-		self.lat_pub = rospy.Publisher('lat_error',Float32,queue_size=10)
-		self.lon_pub = rospy.Publisher('lon_error',Float32,queue_size=10)
-		self.reached_pub = rospy.Publisher('/reached',Float32,queue_size=10)
-				
+		self.throttle_pub = rospy.Publisher('throttle_error', Float64, queue_size=10)
+		self.lat_pub = rospy.Publisher('lat_error',Float64,queue_size=10)
+		self.lon_pub = rospy.Publisher('lon_error',Float64,queue_size=10)
+		self.reached_pub = rospy.Publisher('/reached',Float64,queue_size=10)
+		self.Z_pub = rospy.Publisher('/Z_diff',Float64,queue_size=10)		
 
 		# Subscribing 'edrone/gps', 'pid_tuning_altitude', '/pid_tuning_roll', '/pid_tuning_pitch'
 		rospy.Subscriber('edrone/gps', NavSatFix, self.gps_callback)
@@ -97,16 +103,10 @@ class PositionControl():
 	# function to check if error between the current position coordinates and setpoint is low enough to be ignored
 	# it is called from the pid() function
 	def check_error(self, error):
-		if(self.check_point_no == 1 or self.check_point_no == 2 or self.check_point_no == 13 ):
-			if abs(error[0])<0.05 and abs(error[1])<0.05 and abs(error[2])<0.008:
-				return True
-			else:
-				return False
+		if abs(error[0])<0.1 and abs(error[1])<0.1 and abs(error[2])<0.08:
+			return True
 		else:
-			if abs(error[0])<0.5 and abs(error[1])<0.5 and abs(error[2])<0.008:
-				return True
-			else:
-				return False
+			return False
 
 
 	# gps callback function 
@@ -178,13 +178,17 @@ class PositionControl():
 				self.count = 0
 		 		self.check_point_no += 1
 		 		self.setpoint = self.setpoint_set[self.check_point_no]
-		 		if(abs(self.setpoint[2] - 8.44)<0.008):
+		 		if self.check_point_no == 14:
 		 			self.has_reached=True
 					
 		# else:
 		# 	self.count = 0
-
-		
+		if abs(self.position[2]-28.0)<0.08:
+			self.Z_pub.publish(self.position[2]-10.75)
+		if abs(self.position[2]-33.2)<0.08:
+			self.Z_pub.publish(self.position[2]-22.2)
+		if abs(self.position[2]-21.7)<0.08:
+			self.Z_pub.publish(self.position[2]-10.7)
 		# calculation of the differential error
 		d_error = [x1-x2 for (x1,x2) in zip(error, self.prev_error)]
 
