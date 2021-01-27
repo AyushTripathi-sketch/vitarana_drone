@@ -31,13 +31,13 @@ class image_proc():
 
 		rospy.Subscriber("/edrone/camera/image_raw", Image, self.image_callback) #Subscribing to the camera
 		rospy.Subscriber("/marker_pub",Int32,self.marker_callback)
-		rospy.Subscriber("/Z_diff",Float32,self.Z_callback)#
-
+		#rospy.Subscriber("/Z_diff",Float32,self.Z_callback)#
+		#rospy.Subscriber("/edrone/range_finder_bottom",LaserScan,self.obstacle_callback)
 		self.error_pub = rospy.Publisher('/edrone/marker_data',MarkerData,queue_size=10) #Publishing the MarkerData
 		self.recieved = False
 		self.img = np.empty([]) # This will contain your image frame from camera
 		self.bridge = CvBridge()
-		self.Z = 0.0
+		#self.Z = [0.0]
 		
 		self.msg = MarkerData()
 		self.msg.marker_id = 0
@@ -60,9 +60,12 @@ class image_proc():
 
 	def marker_callback(self,msg):
 		self.msg.marker_id = msg.data
-	def Z_callback(self,msg):
-		self.Z = msg.data
-		self.Z = float(self.Z) 
+	#def obstacle_callback(self,msg):
+	#	self.Z = msg.ranges
+
+	#def Z_callback(self,msg):
+	#	self.Z = msg.data
+	#	self.Z = float(self.Z) 
 	def detect_marker(self):
 		if self.recieved:
 			logo_cascade = cv2.CascadeClassifier('/home/maut/catkin_ws/src/vitarana_drone/scripts/data/cascade.xml')
@@ -70,15 +73,15 @@ class image_proc():
 			gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 			# image, reject levels level weights.
-			logo = logo_cascade.detectMultiScale(gray, scaleFactor=1.05,minNeighbors=3)
+			logo = logo_cascade.detectMultiScale(gray, scaleFactor=1.1,minNeighbors=3)
 
 			for (x, y, w, h) in logo:
 				cv2.rectangle(img, (x, y), (x + w, y + h), (255, 255, 0), 2)
 				print(x+w/2,y+h/2)
-				self.msg.err_x_m = ((x+float(w)/2-200)*(self.Z)/self.focal_length) #calculating the x_error from drone to marker
-				self.msg.err_y_m = ((y+float(h)/2-200)*(self.Z)/self.focal_length) #calculating the y_error from drone to marker
+				self.msg.err_x_m = ((x+float(w)/2-200)*(12.0)/self.focal_length) #calculating the x_error from drone to marker
+				self.msg.err_y_m = ((y+float(h)/2-200)*(12.0)/self.focal_length) #calculating the y_error from drone to marker
 				print(self.msg)
-				print(self.Z)
+				#print(self.Z)
 			cv2.imshow('img', img)#display the detected image 
 			cv2.waitKey(2)#wait for 2 millisecond before closing the output
 			self.error_pub.publish(self.msg)#publish the Marker Data

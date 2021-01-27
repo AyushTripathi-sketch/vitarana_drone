@@ -32,6 +32,11 @@ class PositionControl():
 	"""docstring for PositionControl"""
 	def __init__(self):
 		rospy.init_node('position_controller', anonymous=True) # initializing ros node with name position_controller
+		t2 = rospy.Time.now().to_sec()
+		t3 = rospy.Time.now().to_sec()
+		while t3-t2<3.0:
+			t3 = rospy.Time.now().to_sec()
+			continue
 
 		#This correspond to the position coordinates of the point the edrone has to reach
 		#[lat, lon, alt]
@@ -91,7 +96,7 @@ class PositionControl():
 		self.e_sum = [0.0,0.0,0.0]
 		#some constants to determine the distance at which next Setpoint is to be set
 		self.a = 4
-		self.p = 25
+		self.p = 21
 		# Declaring command of message type edrone_cmd and initializing the values
 		self.command = edrone_cmd()
 		self.command.rcRoll = 1500.0
@@ -375,7 +380,7 @@ if __name__ == '__main__':
 	while not rospy.is_shutdown():
 		# initial delay of 6 seconds
 		t1 = rospy.Time.now().to_sec()
-		if t1 - t0 <5:
+		if t1 - t0 <1.0:
 			continue
 
 		# running the pid

@@ -20,6 +20,7 @@ from vitarana_drone.msg import *
 from pid_tune.msg import PidTune
 from std_msgs.msg import Float64
 from sensor_msgs.msg import NavSatFix
+from sensor_msgs.msg import LaserScan
 import rospy
 import time
 from std_msgs.msg import Bool
@@ -40,12 +41,8 @@ class PositionControl():
 		self.alt = df.loc[:,'Altitude']
 
 		self.safe_alt =14.0
-		self.setpoint_set = [[19.0,72.0,14.0],[18.9999864489,71.9999430161,14.0],[18.9999864489,71.9999430161,8.44099749139],
-						   [18.9999864489,71.9999430161,self.alt[0]+12.0],[self.lat[0],self.lon[0],self.alt[0]+12.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],
-						   [19.0000135511,71.9999430161,self.alt[0]+12.0],[19.0000135511,71.9999430161,14.0],[19.0000135511,71.9999430161,8.44099749139],[19.0000135511,71.9999430161,self.alt[1]+12.0],
-						   [self.lat[1],self.lon[1],self.alt[1]+12.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[19.0,71.99995726171,self.alt[1]+12.0],[19.0,71.99995726171,self.alt[1]+12.0],[19.0,71.99995726171,8.44099749139],
-						   [19.0,71.99995726171,self.alt[2]+12.0],[19.000332997364,71.99995726171,self.alt[2]+12.0],[19.000332997364,71.99995726171,self.alt[2]+27.0],[self.lat[2],self.lon[2],self.alt[2]+12.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[19.0,72.0,self.alt[2]+12.0],
-						   [19.0,72.0,20.0],[19.0,72.0,8.44],[19.0,72.0,8.44]]
+		self.setpoint_set = [[19.0,72.0,14.0],[19.0,71.99995726171,14.0],[19.0,71.99995726171,8.43999749],[19.0,71.99995726171,self.alt[2]+12],
+						   [self.lat[2],self.lon[2],self.alt[2]+12.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[19.0,72.0,self.alt[2]+12.0],[19.0,72.0,20.0],[19.0,72.0,8.44],[19.0,72.0,8.44]]
 		
 		self.setpoint_des = [0.0,0.0,0.0]
 		self.setpoint = [19.0,72.0,self.safe_alt]
@@ -60,7 +57,7 @@ class PositionControl():
 		self.Kd = [100.2,50.0,55.0]
 
 		#counter variable to count the time the edrone has been on a specific target setpoint for
-		self.count = self.chk_no = self.flag = 0
+		self.count = self.chk_no = self.flag = self.cnt=0
 
 		#flag to ascertain if the edrone has reached its final position
 		self.has_reached = False
@@ -75,6 +72,7 @@ class PositionControl():
 		self.err_trgt = [0.0,0.0,0.0]
 		self.err_x = 0.0 
 		self.err_y = 0.0
+		self.ob_dis=[0.0,0.0,0.0,0.0,0.0]
 
 		# Declaring command of message type edrone_cmd and initializing the values
 		self.command = edrone_cmd()
@@ -105,6 +103,7 @@ class PositionControl():
 		rospy.Subscriber('pid_tuning_altitude', PidTune, self.throttle_pid_tune)
 		rospy.Subscriber('/pid_tuning_roll', PidTune, self.roll_set_pid)
 		rospy.Subscriber('/pid_tuning_pitch', PidTune, self.pitch_set_pid)
+		rospy.Subscriber('edrone/range_finder_top',LaserScan,self.obstacle_callback)
 		#rospy.Subscriber('/setpoint_dec', NavSatFix, self.set_position)
 		#Defining the Gripper Service
 		self.service_name  = "/edrone/activate_gripper"
@@ -152,6 +151,9 @@ class PositionControl():
 		self.setpoint_des[0] = msg.latitude
 		self.setpoint_des[1] = msg.longitude
 		self.setpoint_des[2] = msg.altitude
+	
+	def obstacle_callback(self,msg):
+		self.ob_dis = msg.ranges
 	
 	def marker_callback(self,msg):
 		self.marker_id = msg.marker_id
@@ -220,6 +222,16 @@ class PositionControl():
 				continue			
 		# else:
 		# 	self.count = 0
+		if (self.ob_dis[1]<30 and self.ob_dis[1]>1) or (self.ob_dis[3]<15 and self.ob_dis[3]>1):
+			if(self.cnt<20):
+				error[0]=-1
+				error[1]=0.0
+				error[2]=0.0
+				self.cnt += 1
+			else:
+				error[0]=0.0
+				error[1]=0.0
+				error[2]=15.0
 		d_error = [x1-x2 for (x1,x2) in zip(error, self.prev_error)]
 
 		# calculation of error sum

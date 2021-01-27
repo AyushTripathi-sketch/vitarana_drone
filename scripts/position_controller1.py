@@ -91,7 +91,7 @@ class PositionControl():
 		self.e_sum = [0.0,0.0,0.0]
 		#some constants to determine the distance at which next Setpoint is to be set
 		self.a = 4
-		self.p = 25
+		self.p = 21
 		# Declaring command of message type edrone_cmd and initializing the values
 		self.command = edrone_cmd()
 		self.command.rcRoll = 1500.0
@@ -159,16 +159,10 @@ class PositionControl():
 			# print(self.err_x*110692.0702932625)
 			# print(self.err_y*(-105292.0089353767))
 	def check_error(self, error):
-		if(abs(self.target[0] - self.setpoint[0])< 1e-7 ):
-			if abs(error[0])<0.1 and abs(error[1])<0.1 and abs(error[2])<0.05:
-				return True
-			else:
-				return False
+		if abs(error[0])<0.05 and abs(error[1])<0.05 and abs(error[2])<0.08:
+			return True
 		else:
-			if abs(error[0])<0.05 and abs(error[1])<0.05 and abs(error[2])<0.08:
-				return True
-			else:
-				return False
+			return False
 
 	def path_planning(self,error):
 
@@ -178,22 +172,21 @@ class PositionControl():
 		if self.check_error(error):
 			self.count += 1
 		 	# print(self.count)
-		 	if self.count>=10:
+		 	if self.count>10:
 				self.count = 0
 		 		
 		 		#Checking if it has attained safe altitude
-		 		if  abs(self.target[0] - self.setpoint[0])*111000 > 17: #and abs(self.target[1] - self.setpoint[1])*111000 > 17:
+		 		if  abs(self.target[0] - self.setpoint[0])*111000 > 25: #and abs(self.target[1] - self.setpoint[1])*111000 > 17:
 		 			#Checking the Obstacle presence
-		 			if (self.ob_dis[1]<20 and self.ob_dis[1]>1) or (self.ob_dis[3]<20 and self.ob_dis[3]>1):
+		 			if (self.ob_dis[1]<15 and self.ob_dis[1]>1) or (self.ob_dis[3]<15 and self.ob_dis[3]>1):
 		 				# self.a = self.a*3.3
 		 				#calculate the angle of the line between target and current position  
 						# angle = math.atan2(self.target[1]-self.position[1],self.target[0]-self.position[0])
 				 		# self.setpoint[1] = self.setpoint[1] + self.a*math.sin(angle)/111000
 				 		self.setpoint[2] += 15
+				 		self.safe_alt=self.setpoint[2]
 				 	#Checking if it is close to the target
-		 			elif(abs(self.target[0] - self.setpoint[0])*111000) > 5:
-		 				if(self.chk_no == 4 and self.ob_dis[3]>30):
-		 					self.p = 21
+		 			elif abs(self.position[2]-self.safe_alt)<0.8:
 		 				#calculate the angle of the line between target and current position
 		 				angle = math.atan2(self.target[1]-self.position[1],self.target[0]-self.position[0])
 		 				self.setpoint[0] = self.setpoint[0] + self.p*math.cos(angle)/111000
@@ -215,17 +208,17 @@ class PositionControl():
 		 			self.chk_no += 1
 		 			# self.target = self.target_set[self.chk_no]
 		 			print(self.chk_no)
-		 			if self.chk_no == 3: 
+		 			if self.chk_no == 4: 
 		 				self.safe_alt = self.alt[0]+12.0
-		 			elif self.chk_no == 9:
+		 			elif self.chk_no == 11:
 		 				self.safe_alt = self.alt[1]+12.0
-		 			elif self.chk_no == 15:
+		 			elif self.chk_no == 19:
 		 				self.safe_alt = self.alt[2]+12.0
 		 			if (self.chk_no == 6 or self.chk_no == 13 or self.chk_no == 21):
 		 				# self.target[0] = self.position[0] + self.err_x
 		 				# self.target[1] = self.position[1] - self.err_y
 		 				# self.target[2] = self.safe_alt
-		 				self.target_set[self.chk_no] = [self.marker_loc[0], self.marker_loc[1], self.safe_alt-11.5]
+		 				self.target_set[self.chk_no] = [self.marker_loc[0], self.marker_loc[1], self.safe_alt-11.4]
 		 				self.target_set[self.chk_no+1] = [self.marker_loc[0], self.marker_loc[1], self.safe_alt]
 		 			self.target = self.target_set[self.chk_no]
 		 			print(self.target)
@@ -251,7 +244,9 @@ class PositionControl():
 
 		# Calling the path planning function to calculate setpoints for reaching the target
 		self.path_planning(self.error)
-
+		
+		#Calling the Gripper service to attach the package	
+		print(self.chk_no)
 		if(self.chk_no==4 or self.chk_no==11 or self.chk_no==19):
 			while(True):
 				req = self.srv_class._request_class(activate_gripper=True)
@@ -274,35 +269,6 @@ class PositionControl():
 					print("package dropped")
 					break
 				continue
-		
-		# #Calling the Gripper service to attach the package	
-		# sendval = not self.has_reached
-		# req = self.srv_class._request_class(activate_gripper=sendval)
-		# #print(sendval)
-
-		# # if needed set any arguments here
-		# #rospy.loginfo(req)
-		# rospy.wait_for_service(self.service_name)
-		# srv_client = rospy.ServiceProxy(self.service_name, self.srv_class)
-		# resp = srv_client(req)
-		# # rospy.loginfo(resp)
-		# if(resp.result==True and self.flag == 0):
-		# 	print('package recieved')
-		# 	self.flag=1
-
-		# if((self.chk_no==8 or self.chk_no==15 or self.chk_no==23) and resp.result):
-		# 	t0 = rospy.Time.now().to_sec()
-		# 	t1=0.0
-		# 	while(t1-t0<0.5):
-		# 		t1 = rospy.Time.now().to_sec()
-		# 		sendval = False
-		# 		req = self.srv_class._request_class(activate_gripper=sendval)
-		# 		rospy.wait_for_service(self.service_name)
-		# 		srv_client = rospy.ServiceProxy(self.service_name, self.srv_class)
-		# 		resp = srv_client(req)
-		# 		if resp.result==True:
-		# 			break
-		# 		continue
 
 
 		if abs(self.position[2]-self.alt[0])<0.08:
@@ -375,7 +341,7 @@ if __name__ == '__main__':
 	while not rospy.is_shutdown():
 		# initial delay of 6 seconds
 		t1 = rospy.Time.now().to_sec()
-		if t1 - t0 <5:
+		if t1 - t0 <1:
 			continue
 
 		# running the pid
