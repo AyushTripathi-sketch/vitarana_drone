@@ -20,10 +20,11 @@ from vitarana_drone.msg import *
 from pid_tune.msg import PidTune
 from std_msgs.msg import Float64
 from sensor_msgs.msg import NavSatFix
+from sensor_msgs.msg import LaserScan
 import rospy
 import time
 from std_msgs.msg import Bool
-#import rosservice
+import rosservice
 import pandas as pd
 class PositionControl():
 	"""docstring for PositionControl"""
@@ -34,42 +35,57 @@ class PositionControl():
 		#[lat, lon, alt]
 		#read the csv file having destination coordinates
 		col_names = ['Cell_no','Latitude','Longitude','Altitude']
-		df = pd.read_csv('/home/maut/catkin_ws/src/vitarana_drone/scripts/manifest.csv',names=col_names,header=None)
-		self.lat = df.loc[:,'Latitude']
-		self.lon = df.loc[:,'Longitude']
-		self.alt = df.loc[:,'Altitude']
+		df1 = pd.read_csv('/home/maut/catkin_ws/src/vitarana_drone/scripts/map.csv',names=col_names,header=None)
+		lat1 = df1.loc[:,'Latitude']
+		lon1 = df1.loc[:,'Longitude']
+		alt1 = df1.loc[:,'Altitude']
 
-		self.safe_alt =14.0
-		self.setpoint_set = [[19.0,72.0,8.0],[19.00013,72.0,8.0],[19.00013,72.0,0.31]]
+		df2 = pd.read_csv('/home/maut/catkin_ws/src/vitarana_drone/scripts/Coordinates2.csv',names=col_names,header=None)
+		lat2 = df2.loc[:,'Latitude']
+		lon2 = df2.loc[:,'Longitude']
+		alt2 = df2.loc[:,'Altitude']
+
+		self.safe_alt =22.0
+		self.setpoint_set = [[18.9998887905,72.0002184414,22],[lat1[0],lon1[0],22],[lat1[0],lon1[0],alt1[0]+0.035],[lat1[0],lon1[0],alt1[0]+20.0],
+							 [lat2[0],lon2[0],alt2[0]+20.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[1],lon2[1],alt2[1]+12],[lat2[1],lon2[1],alt2[1]-0.05],
+							 [lat2[1],lon2[1],alt2[1]+20.0],[lat1[1],lon1[1],25],[lat1[1],lon1[1],alt1[1]],[lat1[1],lon1[1],22],[lat1[2],lon1[2],22],[lat1[2],lon1[2],alt1[2]+0.035],
+							 [lat1[2],lon1[2],alt1[2]+20.0],[lat2[2],lon2[2],alt2[2]+20.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[3],lon2[3],alt2[3]+12],
+							 [lat2[3],lon2[3],alt2[3]-0.025],[lat2[3],lon2[3],alt2[3]+20.0],[lat1[3],lon1[3],25],[lat1[3],lon1[3],alt1[3]],[lat1[3],lon1[3],22],[lat1[4],lon1[4],22],
+							 [lat1[4],lon1[4],alt1[4]+0.035],[lat1[4],lon1[4],alt1[4]+20.0],[lat2[4],lon2[4],alt2[4]+20.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],
+							 [lat2[5],lon2[5],alt2[5]+12],[lat2[5],lon2[5],alt2[5]-0.025],[lat2[5],lon2[5],alt2[5]+20.0],[lat1[5],lon1[5],25],
+							 [lat1[5],lon1[5],alt1[5]],[lat1[5],lon1[5],22],[lat1[6],lon1[6],22],[lat1[6],lon1[6],alt1[6]+0.035],[lat1[6],lon1[6],alt1[6]+20.0],
+							 [lat2[6],lon2[6],alt2[6]+20.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[7],lon2[7],alt2[7]+12.0],[lat2[7],lon2[7],alt2[7]],
+							 [lat2[7],lon2[7],alt2[7]+20.0],[lat1[7],lon1[7],25],[lat1[7],lon1[7],alt1[7]]]
 		
 		self.setpoint_des = [0.0,0.0,0.0]
-		self.setpoint = [19.0,72.0,self.safe_alt]
+		self.setpoint = [18.9998887905,72.0002184414,22]
 		#This corresponds to the current position coordinates of the edrone
 		#[lat, lon, alt]
 		self.position = [19.0,72.0,0.31]
 
 		
 		#setting of Kp, Ki and Kd for [alt, lon, lat]
-		self.Kp = [7.68,0.73,0.73]
+		self.Kp = [7.68,2.04,2.04]
 		self.Ki = [0.0,0.0,0.0]
-		self.Kd = [100.2,50.0,55.0]
+		self.Kd = [100.2,100.5,100.5]
 
 		#counter variable to count the time the edrone has been on a specific target setpoint for
 		self.count = self.chk_no = self.flag = 0
-
+		self.chk_no = 1
 		#flag to ascertain if the edrone has reached its final position
 		self.has_reached = False
 
 		# min and max values to be sent for [rcRoll, rcPitch, rcThrottle]
 		self.min_values = [1000,1000,1000]
 		self.max_values = [2000,2000,2000]
-
+		self.closedVertices = set([])
 		# variables to store the differential error and sum of errors for pid tuning
 		self.prev_error = [0.0,0.0,0.0]
 		self.e_sum = [0.0,0.0,0.0]
 		self.err_trgt = [0.0,0.0,0.0]
 		self.err_x = 0.0 
 		self.err_y = 0.0
+		self.ranges = [0.0,0.0,0.0,0.0,0.0]
 
 		# Declaring command of message type edrone_cmd and initializing the values
 		self.command = edrone_cmd()
@@ -91,7 +107,6 @@ class PositionControl():
 		self.throttle_pub = rospy.Publisher('throttle_error', Float64, queue_size=10)
 		self.lat_pub = rospy.Publisher('lat_error',Float64,queue_size=10)
 		self.lon_pub = rospy.Publisher('lon_error',Float64,queue_size=10)
-		#self.reached_pub = rospy.Publisher('/reached',Float64,queue_size=10)
 		#self.Z_pub = rospy.Publisher('/Z_diff',Float64,queue_size=10)		
 
 		# Subscribing 'edrone/gps', 'pid_tuning_altitude', '/pid_tuning_roll', '/pid_tuning_pitch'
@@ -100,20 +115,33 @@ class PositionControl():
 		rospy.Subscriber('pid_tuning_altitude', PidTune, self.throttle_pid_tune)
 		rospy.Subscriber('/pid_tuning_roll', PidTune, self.roll_set_pid)
 		rospy.Subscriber('/pid_tuning_pitch', PidTune, self.pitch_set_pid)
+		rospy.Subscriber('edrone/range_finder_top',LaserScan,self.obstacle_callback)
 		#rospy.Subscriber('/setpoint_dec', NavSatFix, self.set_position)
 		#Defining the Gripper Service
-		#self.service_name  = "/edrone/activate_gripper"
-		#self.srv_class = rosservice.get_service_class_by_name(self.service_name)
+		self.service_name  = "/edrone/activate_gripper"
+		self.srv_class = rosservice.get_service_class_by_name(self.service_name)
 		
 			
 
 	# function to check if error between the current position coordinates and setpoint is low enough to be ignored
 	# it is called from the pid() function
 	def check_error(self, error):
-		if abs(error[0])<0.05 and abs(error[1])<0.05 and abs(error[2])<0.08:
-			return True
+		if(self.flag==1):
+			if abs(error[0])<1.5 and abs(error[1])<1.5 and abs(error[2])<0.08:
+				return True
+			else:
+				return False
+		elif(self.flag==2):
+			if abs(error[0])<1 and abs(error[1])<1 and abs(error[2])<0.08:
+				return True
+			else:
+				return False
 		else:
-			return False
+			if abs(error[0])<0.05 and abs(error[1])<0.05 and abs(error[2])<0.08:
+				return True
+			else:
+				return False
+
 
 
 	# gps callback function 
@@ -147,22 +175,97 @@ class PositionControl():
 		self.setpoint_des[0] = msg.latitude
 		self.setpoint_des[1] = msg.longitude
 		self.setpoint_des[2] = msg.altitude
-	
+
+	def obstacle_callback(self,msg):
+		self.ranges = msg.ranges
+		#print(self.ranges)
 	def marker_callback(self,msg):
 		self.marker_id = msg.marker_id
 		self.err_x = msg.err_x_m/110692.0702932625
 		self.err_y = msg.err_y_m/(-105292.0089353767)
-	
+
+	def hueristic(self,start,goal):
+		#using euclidean distance, movement in each square in a grid around the object
+
+		dx=abs(start[0]-goal[0])**2
+		dy=abs(start[1]-goal[1])**2
+		dz=abs(start[2]-goal[2])**2
+
+		return pow(dx+dy+dz,0.5)
+
+	def get_neighbours(self,pos):
+		n=[]
+		if all(i<15.0 and i>1.0 for i in self.ranges) or (abs(self.target[0]-self.position[0])*111000<20 and abs(self.target[1]-self.position[1])*111000 < 20):
+			self.flag=2
+			#can move in any cardinal position
+			positions=[(0,8,0),(0,-8,0),(8,0,0),(-8,0,0),(4,4,0),(-4,4,0),(-4,-4,0),(4,-4,0),(0,0,8)]
+			if self.ranges[0]<10 and self.ranges[0]>1:
+				if (0,8,0) in positions: positions.remove((0,8,0))
+				if (4,4,0) in positions: positions.remove((4,4,0))
+				if (-4,4,0) in positions: positions.remove((-4,4,0))
+			if self.ranges[1]<10 and self.ranges[1]>1:
+				if (4,4,0) in positions: positions.remove((4,4,0))
+				if (0,8,0) in positions: positions.remove((0,8,0))
+				if (8,0,0) in positions: positions.remove((8,0,0))
+				if (4,-4,0) in positions: positions.remove((4,-4,0))
+			if self.ranges[2]<10 and self.ranges[2]>1:
+				if (0,-8,0) in positions: positions.remove((0,-8,0))
+				if (4,-4,0) in positions: positions.remove((4,-4,0))
+				if (-4,-4,0) in positions: positions.remove((-4,-4,0))
+			if self.ranges[3]<10 and self.ranges[3]>1:
+				if (-8,0,0) in positions: positions.remove((-8,0,0))
+				if (-4,4,0) in positions: positions.remove((-4,4,0))
+				if (-4,-4,0) in positions: positions.remove((-4,-4,0))
+			if self.ranges[4]<10 and self.ranges[4]>1:
+				if (0,0,8) in positions: positions.remove((0,0,8))
+			
+			for dx,dy,dz in positions:
+				x2=pos[0]+dx
+				y2=pos[1]+dy
+				z2=pos[2]+dz
+
+				n.append((x2,y2,z2))
+
+			return n
+		else:
+			#can move in any cardinal position
+			positions=[(0,20,0),(0,-20,0),(20,0,0),(-20,0,0),(12,12,0),(-12,12,0),(-12,-12,0),(12,-12,0),(0,0,15)]
+			for dx,dy,dz in positions:
+				x2=pos[0]+dx
+				y2=pos[1]+dy
+				z2=pos[2]+dz
+
+				n.append((x2,y2,z2))
+
+			return n
+
+	def star_search(self,start,end):
+
+		waypint=[0.0,0.0,0.0]
+		min_cost=1e10
+		self.closedVertices.add(tuple(start))
+		for neighbour in self.get_neighbours(start):
+			if neighbour in self.closedVertices:
+				continue
+			cost=self.hueristic(neighbour,end)
+			if cost < min_cost:
+				min_cost=cost
+				waypoint=neighbour
+		#closedVertices.add(waypoint)
+		waypint[0]=19.0 + waypoint[0]/110692.0702932625
+		waypint[1]=72.0 + waypoint[1]/-105292.0089353767
+		waypint[2]=waypoint[2]
+		return waypint
+
 	def pid(self):
 
 		# calculating the error in lat, lon and alt and rescaling the error in lat, lon so that it corresponds to roughly in metres
 		error = [(x1-x2) for (x1,x2) in zip(self.setpoint, self.position)]
-		error[0] = error[0] * 111000
-		error[1] = error[1] * 111000
+		error[0] = error[0] * 60000#111000
+		error[1] = error[1] * 60000#111000
 		#print("\n")
 		#print(error[2])
 		#print("\n")
-
 		#if(self.setpoint_des[0]!=0 and self.flag==0 and self.check_error(error)):
 			#self.setpoint=[19.0007046575,71.9998955286,22.1599967919]
 			#self.flag==1
@@ -173,25 +276,43 @@ class PositionControl():
 		# if the edrone has reached the final setpoint, the has_reached flag is set to True
 		if self.check_error(error):
 			self.count += 1
-		 	print(self.count)
-		 	'''if self.chk_no==29:
-		 		self.has_reached=True'''
+		 	#print(self.count)
 		 	if self.count>=10:
 				self.count = 0
-		 		self.chk_no += 1
-		 		print(self.chk_no)
-		 		self.setpoint = self.setpoint_set[self.chk_no]
-		 		'''if (self.chk_no == 5 or self.chk_no == 13 or self.chk_no == 22):# and (abs(self.position[0]-self.target_set[self.chk_no][0])<1):
-		 				#self.chk_no+=1
-		 				self.setpoint[0] = self.position[0] + self.err_x
-		 				self.setpoint[1] = self.position[1] - self.err_y
-		 				self.setpoint[2] = self.setpoint_set[self.chk_no-1][2]
-		 				self.setpoint_set[self.chk_no+1] = [self.setpoint[0], self.setpoint[1], self.setpoint_set[self.chk_no-1][2]-11.0]
-		 				self.setpoint_set[self.chk_no+2] = [self.setpoint[0], self.setpoint[1], self.setpoint_set[self.chk_no-1][2]]
-		 		print(self.setpoint)'''
+				self.flag = 0
+		 		self.target = self.setpoint_set[self.chk_no]
+		 		if abs(self.target[0]-self.position[0])*111000 < 0.5 and abs(self.target[1]-self.position[1])*111000 < 0.5 :
+		 			self.chk_no += 1
+		 			print(self.chk_no)
+		 			self.target = self.setpoint_set[self.chk_no]
+		 		if(self.chk_no in [5,18,31,44]):
+	 				#self.chk_no+=1
+	 				self.setpoint[0] = self.position[0] + self.err_x
+	 				self.setpoint[1] = self.position[1] - self.err_y
+	 				self.setpoint[2] = self.setpoint_set[self.chk_no-1][2]
+	 				self.setpoint_set[self.chk_no] = [self.setpoint[0],self.setpoint[1],self.setpoint[2]]
+	 				self.setpoint_set[self.chk_no+1] = [self.setpoint[0], self.setpoint[1], self.setpoint_set[self.chk_no-1][2]-14.0]
+	 				self.setpoint_set[self.chk_no+2] = [self.setpoint[0], self.setpoint[1], self.setpoint_set[self.chk_no-1][2]-8.0]
+		 		else:
+		 			if abs(self.target[0]-self.position[0])*111000>10 or abs(self.target[1]-self.position[1])*111000>10:
+		 				start=[0.0,0.0,0.0]
+		 				end=[0.0,0.0,0.0]
+		 				self.flag=1
+		 				start[0]= 110692.0702932625 * (self.position[0] - 19.0)
+		 				start[1]=-105292.0089353767 * (self.position[1] - 72.0)
+		 				start[2]=self.position[2]
+		 				end[0]= 110692.0702932625 * (self.target[0] - 19.0)
+		 				end[1]=-105292.0089353767 * (self.target[1] - 72.0)
+		 				end[2]=self.target[2]
+		 				print("working")
+		 				self.setpoint=self.star_search(start,end)
+		 			else:
+		 				self.setpoint=self.target
+		 				self.closedVertices = set([])
+		 		print(self.setpoint)
 
 		#rospy.loginfo(resp)
-		'''if(self.chk_no==3 or self.chk_no==11 or self.chk_no==19):
+		if(self.chk_no in [3,10,16,23,29,36,42,49]):
 			while(True):
 				req = self.srv_class._request_class(activate_gripper=True)
 				#if needed set any arguments here
@@ -203,7 +324,7 @@ class PositionControl():
 					print("package received")
 					break
 
-		if(self.chk_no==7 or self.chk_no==15 or self.chk_no==23):
+		if(self.chk_no in [7,13,20,26,33,39,46,52]):
 			while(True):
 				req = self.srv_class._request_class(activate_gripper=False)
 				rospy.wait_for_service(self.service_name)
@@ -212,14 +333,15 @@ class PositionControl():
 				if resp.result==False:
 					print("package dropped")
 					break
-				continue'''	
+				continue			
 		# else:
 		# 	self.count = 0
 		d_error = [x1-x2 for (x1,x2) in zip(error, self.prev_error)]
 
 		# calculation of error sum
-		self.e_sum = [x1+x2 for (x1,x2) in zip(error,self.e_sum)]
-
+		self.e_sum = [x1+x2 for (x1,x2) in zip(error, self.e_sum)]
+		#print(self.e_sum)
+		##print('/n')
 		# Calculation of PID output required for latitude, longitude and altitude respectively
 		self.out_lat = float(1500 + (error[0]*self.Kp[2] + self.e_sum[0]*self.Ki[2] + d_error[0]*self.Kd[2]))
 		self.out_lon = float(1500 + (error[1]*self.Kp[1] + self.e_sum[1]*self.Ki[1] + d_error[1]*self.Kd[1]))
@@ -277,7 +399,7 @@ if __name__ == '__main__':
 	while not rospy.is_shutdown():
 		# initial delay of 6 seconds
 		t1 = rospy.Time.now().to_sec()
-		if t1 - t0 <3:
+		if t1 - t0 <1:
 			continue
 
 		# running the pid

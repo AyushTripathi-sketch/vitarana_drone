@@ -67,30 +67,24 @@ class D3_Astar():
 
 		#can move in any cardinal position
 		positions=[(0,1,0),(0,-1,0),(1,0,0),(-1,0,0),(1,1,0),(-1,1,0),(-1,-1,0),(1,-1,0),(0,0,1)]
-		to_remove = set()
 		if self.ranges[0]<5 and self.ranges[0]>1:
-			to_remove.add(0)
-			to_remove.add(4)
-			to_remove.add(5)
+			positions.remove((0,1,0))
+			positions.remove((1,1,0))
+			positions.remove((-1,1,0))
 		if self.ranges[1]<5 and self.ranges[1]>1:
-			to_remove.add(1)
-			to_remove.add(6)
-			to_remove.add(7)
+			positions.remove((1,0,0))
+			positions.remove((1,1,0))
+			positions.remove((1,-1,0))
 		if self.ranges[2]<5 and self.ranges[2]>1:
-			to_remove.add(2)
-			to_remove.add(5)
-			to_remove.add(7)
+			positions.remove((0,-1,0))
+			positions.remove((1,-1,0))
+			positions.remove((-1,-1,0))
 		if self.ranges[3]<5 and self.ranges[3]>1:
-			to_remove.add(3)
-			to_remove.add(5)
-			to_remove.add(6)
+			position.remove((-1,0,0))
+			position.remove((-1,1,0))
+			position.remove((-1,-1,0))
 		if self.ranges[4]<5 and self.ranges[4]>1:
-			to_remove.add(8)
-			
-		i = 0
-		for item in to_remove:
-			positions.pop(item-i)
-			i+=1
+			positions.remove((0,0,1))
 		
 		for dx,dy,dz in positions:
 			x2=pos[0]+dx

@@ -58,9 +58,9 @@ class Edrone():
 
 		# initial setting of Kp, Kd and ki for [roll, pitch, yaw]. eg: self.Kp[2] corresponds to Kp value in yaw axis
 		# after tuning and computing corresponding PID parameters, change the parameters
-		self.Kp = [28.8,19.68,300]
-		self.Ki = [0.064,0.08,1.0]
-		self.Kd = [281.7,240,0.0]
+		self.Kp = [28.8,28.8,300]
+		self.Ki = [0.0,0.0,0.0]
+		self.Kd = [281.7,281.7,203.1]
 		# -----------------------Add other required variables for pid here ----------------------------------------------
 		self.min_values = [0, 0, 0, 0]
 		self.max_values = [1024, 1024, 1024, 1024]
@@ -92,9 +92,9 @@ class Edrone():
 		# Subscribing to /drone_command, imu/data, /pid_tuning_roll, /pid_tuning_pitch, /pid_tuning_yaw
 		rospy.Subscriber('/drone_command', edrone_cmd, self.drone_command_callback)
 		rospy.Subscriber('/edrone/imu/data', Imu, self.imu_callback)
-		rospy.Subscriber('/pid_tuning_roll', PidTune, self.roll_set_pid)
-		rospy.Subscriber('/pid_tuning_pitch', PidTune, self.pitch_set_pid)
-		rospy.Subscriber('/pid_tuning_yaw', PidTune, self.yaw_set_pid)
+		#rospy.Subscriber('/pid_tuning_roll', PidTune, self.roll_set_pid)
+		#rospy.Subscriber('/pid_tuning_pitch', PidTune, self.pitch_set_pid)
+		#rospy.Subscriber('/pid_tuning_yaw', PidTune, self.yaw_set_pid)
 		rospy.Subscriber('/reached', Float32, self.has_reached_callback)
 
 	# Imu callback function
@@ -206,7 +206,7 @@ class Edrone():
 		#   8. Update previous errors.eg: self.prev_error[1] = error[1] where index 1 corresponds to that of pitch (eg)
 		self.prev_error = self.error
 		#   9. Add error_sum to use for integral component
-		self.sum_Iterm = self.sum_Iterm + self.error
+		self.sum_Iterm = [x1+x2 for (x1,x2) in zip(self.sum_Iterm,self.error)]
 
 		# publish topics
 		self.pwm_pub.publish(self.pwm_cmd)
