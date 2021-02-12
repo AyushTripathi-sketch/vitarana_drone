@@ -35,12 +35,12 @@ class PositionControl():
 		#[lat, lon, alt]
 		#read the csv file having destination coordinates
 		col_names = ['Cell_no','Latitude','Longitude','Altitude']
-		df1 = pd.read_csv('/home/maut/catkin_ws/src/vitarana_drone/scripts/mat4.csv',names=col_names,header=None)
+		df1 = pd.read_csv('/home/maut/catkin_ws/src/vitarana_drone/scripts/map.csv',names=col_names,header=None)
 		lat1 = df1.loc[:,'Latitude']
 		lon1 = df1.loc[:,'Longitude']
 		alt1 = df1.loc[:,'Altitude']
 		col_names = ['Cell_no','Latitude','Longitude','Altitude','Cost','Distance']
-		df2 = pd.read_csv('/home/maut/catkin_ws/src/vitarana_drone/scripts/CostCoordinate4.csv',names=col_names,header=None)
+		df2 = pd.read_csv('/home/maut/catkin_ws/src/vitarana_drone/scripts/CostCoordinate.csv',names=col_names,header=None)
 		lat2 = df2.loc[:,'Latitude']
 		lon2 = df2.loc[:,'Longitude']
 		alt2 = df2.loc[:,'Altitude']
@@ -71,7 +71,7 @@ class PositionControl():
 
 		#counter variable to count the time the edrone has been on a specific target setpoint for
 		self.count = self.chk_no = self.flag = 0
-		self.chk_no = 1
+		self.chk_no = 14
 		#flag to ascertain if the edrone has reached its final position
 		self.has_reached = False
 
@@ -127,12 +127,12 @@ class PositionControl():
 	# it is called from the pid() function
 	def check_error(self, error):
 		if(self.flag==1):
-			if abs(error[0])<1.5 and abs(error[1])<1.5 and abs(error[2])<0.08:
+			if abs(error[0])<0.5 and abs(error[1])<0.5 and abs(error[2])<0.08:
 				return True
 			else:
 				return False
 		elif(self.flag==2):
-			if abs(error[0])<1 and abs(error[1])<1 and abs(error[2])<0.08:
+			if abs(error[0])<0.5 and abs(error[1])<0.5 and abs(error[2])<0.08:
 				return True
 			else:
 				return False
@@ -195,7 +195,9 @@ class PositionControl():
 
 	def get_neighbours(self,pos):
 		n=[]
-		if all(i<15.0 and i>1.0 for i in self.ranges) or (abs(self.target[0]-self.position[0])*111000<20 and abs(self.target[1]-self.position[1])*111000 < 20):
+		x=abs(self.target[0]-self.position[0])*111000
+		y=abs(self.target[1]-self.position[1])*111000
+		if all(i<15.0 and i>1.0 for i in self.ranges):
 			self.flag=2
 			#can move in any cardinal position
 			positions=[(0,8,0),(0,-8,0),(8,0,0),(-8,0,0),(4,4,0),(-4,4,0),(-4,-4,0),(4,-4,0),(0,0,8)]
@@ -227,9 +229,46 @@ class PositionControl():
 				n.append((x2,y2,z2))
 
 			return n
-		else:
+		elif(x<20 or y<20):
+			print(10)
 			#can move in any cardinal position
-			positions=[(0,20,0),(0,-20,0),(20,0,0),(-20,0,0),(12,12,0),(-12,12,0),(-12,-12,0),(12,-12,0),(0,0,15)]
+			positions=[(0,10,0),(0,-10,0),(10,0,0),(-10,0,0),(12,12,0),(-8,8,0),(-8,-8,0),(8,-8,0),(0,0,15)]
+			for dx,dy,dz in positions:
+				x2=pos[0]+dx
+				y2=pos[1]+dy
+				z2=pos[2]+dz
+
+				n.append((x2,y2,z2))
+
+			return n
+		elif(x<40 and y<40):
+			print(25)
+			#can move in any cardinal position
+			positions=[(0,25,0),(0,-25,0),(25,0,0),(-25,0,0),(15,15,0),(-15,15,0),(-15,-15,0),(15,-15,0),(0,0,15)]
+			for dx,dy,dz in positions:
+				x2=pos[0]+dx
+				y2=pos[1]+dy
+				z2=pos[2]+dz
+
+				n.append((x2,y2,z2))
+
+			return n
+		elif(x<60 and y<60):
+			#can move in any cardinal position
+			print(40)
+			positions=[(0,40,0),(0,-40,0),(40,0,0),(-40,0,0),(25,25,0),(-25,25,0),(-25,-25,0),(25,-25,0),(0,0,15)]
+			for dx,dy,dz in positions:
+				x2=pos[0]+dx
+				y2=pos[1]+dy
+				z2=pos[2]+dz
+
+				n.append((x2,y2,z2))
+
+			return n
+		else:
+			print(50)
+			#can move in any cardinal position
+			positions=[(0,50,0),(0,-50,0),(50,0,0),(-50,0,0),(30,30,0),(-30,30,0),(-30,-30,0),(30,-30,0),(0,0,15)]
 			for dx,dy,dz in positions:
 				x2=pos[0]+dx
 				y2=pos[1]+dy

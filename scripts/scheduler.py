@@ -25,12 +25,12 @@ for i in task:
 for i in ret:
 	x=((lat[i]-cen_ret[0])*110692.0702932625)**2
 	y=((lon[i]-cen_ret[1])*105292.0089353767)**2
-	weight=-1*(5+0.1*pow(x+y,0.5)-0.001*(x+y))
+	weight=-1*(5+0.1*pow(x+y,0.5)-0.0003*(x+y))
 	edges.append([i+2,1,weight])
 for i in deli:
 	x=((lat[i]-cen_del[0])*110692.0702932625)**2
 	y=((lon[i]-cen_del[1])*105292.0089353767)**2
-	weight=-1*(5+0.1*pow(x+y,0.5)-0.001*(x+y))
+	weight=-1*(5+0.1*pow(x+y,0.5)-0.0003*(x+y))
 	edges.append([0,i+2,weight])
 for i in deli:
 	for j in ret:
@@ -70,18 +70,24 @@ for i in range(0,9):
 		j+=1
 	path=[]
 
-filename = 'Coordinates2.csv'
+filename = 'CostCoordinate4.csv'
 with open(filename, 'w') as csvfile:
 	csvwriter = csv.writer(csvfile)
 	for a,b,c,d in path_seq:
 		b=b-2
 		c=c-2
-		row1= [cell_no[b],lat[b],lon[b],alt[b]]
-		row2= [cell_no[c],lat[c],lon[c],alt[c]]
+		x=((lat[b]-cen_del[0])*110692.0702932625)**2
+		y=((lon[b]-cen_del[1])*105292.0089353767)**2
+		cost=5+0.1*pow(x+y,0.5)
+		row1= [cell_no[b],lat[b],lon[b],alt[b],cost,pow(x+y,0.5)]
+		x=((lat[c]-cen_ret[0])*110692.0702932625)**2
+		y=((lon[c]-cen_ret[1])*105292.0089353767)**2
+		cost=5+0.1*pow(x+y,0.5)
+		row2= [cell_no[c],lat[c],lon[c],alt[c],cost,pow(x+y,0.5)]
 		csvwriter.writerow(row1)
 		csvwriter.writerow(row2)
 
-filename = 'map.csv'
+filename = 'mat4.csv'
 with open(filename, 'w') as csvfile:
 	csvwriter = csv.writer(csvfile)
 	for a,b,c,d in path_seq:
