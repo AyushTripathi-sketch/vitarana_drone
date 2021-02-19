@@ -35,27 +35,38 @@ class PositionControl():
 		#[lat, lon, alt]
 		#read the csv file having destination coordinates
 		col_names = ['Cell_no','Latitude','Longitude','Altitude']
-		df1 = pd.read_csv('/home/maut/catkin_ws/src/vitarana_drone/scripts/map.csv',names=col_names,header=None)
+		df1 = pd.read_csv('/home/maut/catkin_ws/src/vitarana_drone/scripts/mat4.csv',names=col_names,header=None)
 		lat1 = df1.loc[:,'Latitude']
 		lon1 = df1.loc[:,'Longitude']
 		alt1 = df1.loc[:,'Altitude']
 		col_names = ['Cell_no','Latitude','Longitude','Altitude','Cost','Distance']
-		df2 = pd.read_csv('/home/maut/catkin_ws/src/vitarana_drone/scripts/CostCoordinate.csv',names=col_names,header=None)
+		df2 = pd.read_csv('/home/maut/catkin_ws/src/vitarana_drone/scripts/CostCoordinate4.csv',names=col_names,header=None)
 		lat2 = df2.loc[:,'Latitude']
 		lon2 = df2.loc[:,'Longitude']
 		alt2 = df2.loc[:,'Altitude']
 
 		self.safe_alt =22.0
-		self.setpoint_set = [[18.9998887905,72.0002184414,22],[lat1[0],lon1[0],22],[lat1[0],lon1[0],alt1[0]+0.035],[lat1[0],lon1[0],alt1[0]+20.0],
-							 [lat2[0],lon2[0],alt2[0]+20.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[1],lon2[1],alt2[1]+12],[lat2[1],lon2[1],alt2[1]-0.05],
-							 [lat2[1],lon2[1],alt2[1]+20.0],[lat1[1],lon1[1],25],[lat1[1],lon1[1],alt1[1]],[lat1[1],lon1[1],22],[lat1[2],lon1[2],22],[lat1[2],lon1[2],alt1[2]+0.035],
-							 [lat1[2],lon1[2],alt1[2]+20.0],[lat2[2],lon2[2],alt2[2]+20.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[3],lon2[3],alt2[3]+12],
-							 [lat2[3],lon2[3],alt2[3]-0.025],[lat2[3],lon2[3],alt2[3]+20.0],[lat1[3],lon1[3],25],[lat1[3],lon1[3],alt1[3]],[lat1[3],lon1[3],22],[lat1[4],lon1[4],22],
-							 [lat1[4],lon1[4],alt1[4]+0.035],[lat1[4],lon1[4],alt1[4]+20.0],[lat2[4],lon2[4],alt2[4]+20.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],
-							 [lat2[5],lon2[5],alt2[5]+12],[lat2[5],lon2[5],alt2[5]-0.025],[lat2[5],lon2[5],alt2[5]+20.0],[lat1[5],lon1[5],25],
-							 [lat1[5],lon1[5],alt1[5]],[lat1[5],lon1[5],22],[lat1[6],lon1[6],22],[lat1[6],lon1[6],alt1[6]+0.035],[lat1[6],lon1[6],alt1[6]+20.0],
-							 [lat2[6],lon2[6],alt2[6]+20.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[7],lon2[7],alt2[7]+12.0],[lat2[7],lon2[7],alt2[7]],
-							 [lat2[7],lon2[7],alt2[7]+20.0],[lat1[7],lon1[7],25],[lat1[7],lon1[7],alt1[7]]]
+		self.setpoint_set = [[18.9998887905,72.0002184414,22],[lat1[0],lon1[0],22],[lat1[0],lon1[0],alt1[0]],[lat1[0],lon1[0],alt1[0]+14.0],
+							 [lat2[0],lon2[0],alt2[0]+14.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[1],lon2[1],alt2[1]+6.0],[lat2[1],lon2[1],alt2[1]],
+							 [lat2[1],lon2[1],alt2[1]+14.0],[lat1[1],lon1[1],22],[lat1[1],lon1[1],alt1[1]],[lat1[1],lon1[1],22],[lat1[2],lon1[2],22],[lat1[2],lon1[2],alt1[2]],
+							 [lat1[2],lon1[2],alt1[2]+14.0],[lat2[2],lon2[2],alt2[2]+14.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[3],lon2[3],alt2[3]+6.0],
+							 [lat2[3],lon2[3],alt2[3]],[lat2[3],lon2[3],alt2[3]+14.0],[lat1[3],lon1[3],22],[lat1[3],lon1[3],alt1[3]],[lat1[3],lon1[3],22],[lat1[4],lon1[4],22],
+							 [lat1[4],lon1[4],alt1[4]],[lat1[4],lon1[4],alt1[4]+14.0],[lat2[4],lon2[4],alt2[4]+14.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],
+							 [lat2[5],lon2[5],alt2[5]+6.0],[lat2[5],lon2[5],alt2[5]],[lat2[5],lon2[5],alt2[5]+14.0],[lat1[5],lon1[5],22],
+							 [lat1[5],lon1[5],alt1[5]],[lat1[5],lon1[5],22],[lat1[6],lon1[6],22],[lat1[6],lon1[6],alt1[6]],[lat1[6],lon1[6],alt1[6]+14.0],
+							 [lat2[6],lon2[6],alt2[6]+14.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[7],lon2[7],alt2[7]+6.0],[lat2[7],lon2[7],alt2[7]],
+							 [lat2[7],lon2[7],alt2[7]+14.0],[lat1[7],lon1[7],22],[lat1[7],lon1[7],alt1[7]],[lat1[7],lon1[7],22],[lat1[8],lon1[8],22],
+							 [lat1[8],lon1[8],alt1[8]],[lat1[8],lon1[8],alt1[8]+14.0],[lat2[8],lon2[8],alt2[8]+14.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],
+							 [lat2[9],lon2[9],alt2[9]+6.0],[lat2[9],lon2[9],alt2[9]],[lat2[9],lon2[9],alt2[9]+14.0],[lat1[9],lon1[9],22],[lat1[9],lon1[9],alt1[9]],
+							 [lat1[9],lon1[9],22],[lat1[10],lon1[10],22],[lat1[10],lon1[10],alt1[10]],[lat1[10],lon1[10],alt1[10]+14.0],[lat2[10],lon2[10],alt2[10]+14.0],
+							 [0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[11],lon2[11],alt2[11]+6.0],[lat2[11],lon2[11],alt2[11]],[lat2[11],lon2[11],alt2[11]+14.0],
+							 [lat1[11],lon1[11],22],[lat1[11],lon1[11],alt1[11]],[lat1[11],lon1[11],22],[lat1[12],lon1[12],22],[lat1[12],lon1[12],alt1[12]],[lat1[12],lon1[12],alt1[12]+14.0],
+							 [lat2[12],lon2[12],alt2[12]+14.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[13],lon2[13],alt2[13]+6.0],[lat2[13],lon2[13],alt2[13]],[lat2[13],lon2[13],alt2[13]+14.0],
+							 [lat1[13],lon1[13],22],[lat1[13],lon1[13],alt1[13]],[lat1[13],lon1[13],22],[lat1[14],lon1[14],22],[lat1[14],lon1[14],alt1[14]],[lat1[14],lon1[14],alt1[14]+14.0],
+							 [lat2[14],lon2[14],alt2[14]+14.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[15],lon2[15],alt2[15]+6.0],[lat2[15],lon2[15],alt2[15]],[lat2[15],lon2[15],alt2[15]+14.0],
+							 [lat1[15],lon1[15],22],[lat1[15],lon1[15],alt1[15]],[lat1[15],lon1[15],22],[lat1[16],lon1[16],22],[lat1[16],lon1[16],alt1[16]],[lat1[16],lon1[16],alt1[16]+14.0],
+							 [lat2[16],lon2[16],alt2[16]+14.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[lat2[17],lon2[17],alt2[17]+6.0],[lat2[17],lon2[17],alt2[17]],[lat2[17],lon2[17],alt2[17]+14.0],
+							 [lat1[17],lon1[17],22],[lat1[17],lon1[17],alt1[17]],[lat1[17],lon1[17],22],[18.9998887905,72.0002184414,22],[18.9998887905,72.0002184414,alt1[0]]]
 		
 		self.setpoint_des = [0.0,0.0,0.0]
 		self.setpoint = [18.9998887905,72.0002184414,22]
@@ -65,15 +76,15 @@ class PositionControl():
 
 		
 		#setting of Kp, Ki and Kd for [alt, lon, lat]
-		self.Kp = [7.68,2.04,2.04]
+		self.Kp = [4.08,2.04,2.04]
 		self.Ki = [0.0,0.0,0.0]
-		self.Kd = [100.2,100.5,100.5]
+		self.Kd = [84,100.5,100.5]
 
 		#counter variable to count the time the edrone has been on a specific target setpoint for
-		self.count = self.chk_no = self.flag = 0
-		self.chk_no = 14
+		self.count = self.cnt = self.flag = 0
+		self.chk_no = 1
 		#flag to ascertain if the edrone has reached its final position
-		self.has_reached = False
+		self.has_reached = self.got_it = False
 
 		# min and max values to be sent for [rcRoll, rcPitch, rcThrottle]
 		self.min_values = [1000,1000,1000]
@@ -116,6 +127,7 @@ class PositionControl():
 		rospy.Subscriber('/pid_tuning_roll', PidTune, self.roll_set_pid)
 		rospy.Subscriber('/pid_tuning_pitch', PidTune, self.pitch_set_pid)
 		rospy.Subscriber('edrone/range_finder_top',LaserScan,self.obstacle_callback)
+		rospy.Subscriber('edrone/range_finder_bottom',LaserScan,self.bottom_obstacle)
 		#rospy.Subscriber('/setpoint_dec', NavSatFix, self.set_position)
 		#Defining the Gripper Service
 		self.service_name  = "/edrone/activate_gripper"
@@ -127,12 +139,12 @@ class PositionControl():
 	# it is called from the pid() function
 	def check_error(self, error):
 		if(self.flag==1):
-			if abs(error[0])<0.5 and abs(error[1])<0.5 and abs(error[2])<0.08:
+			if abs(error[0])<1 and abs(error[1])<1 and abs(error[2])<0.08:
 				return True
 			else:
 				return False
 		elif(self.flag==2):
-			if abs(error[0])<0.5 and abs(error[1])<0.5 and abs(error[2])<0.08:
+			if abs(error[0])<1 and abs(error[1])<1 and abs(error[2])<0.08:
 				return True
 			else:
 				return False
@@ -175,10 +187,13 @@ class PositionControl():
 		self.setpoint_des[0] = msg.latitude
 		self.setpoint_des[1] = msg.longitude
 		self.setpoint_des[2] = msg.altitude
-
+	
 	def obstacle_callback(self,msg):
 		self.ranges = msg.ranges
-		#print(self.ranges)
+
+	def bottom_obstacle(self,msg):
+		self.bottom_range = msg.ranges
+		print(self.bottom_range)
 	def marker_callback(self,msg):
 		self.marker_id = msg.marker_id
 		self.err_x = msg.err_x_m/110692.0702932625
@@ -229,7 +244,7 @@ class PositionControl():
 				n.append((x2,y2,z2))
 
 			return n
-		elif(x<20 or y<20):
+		elif(x<20 and y<20):
 			print(10)
 			#can move in any cardinal position
 			positions=[(0,10,0),(0,-10,0),(10,0,0),(-10,0,0),(12,12,0),(-8,8,0),(-8,-8,0),(8,-8,0),(0,0,15)]
@@ -255,8 +270,8 @@ class PositionControl():
 			return n
 		elif(x<60 and y<60):
 			#can move in any cardinal position
-			print(40)
-			positions=[(0,40,0),(0,-40,0),(40,0,0),(-40,0,0),(25,25,0),(-25,25,0),(-25,-25,0),(25,-25,0),(0,0,15)]
+			print(30)
+			positions=[(0,30,0),(0,-30,0),(30,0,0),(-30,0,0),(25,25,0),(-25,25,0),(-25,-25,0),(25,-25,0),(0,0,15)]
 			for dx,dy,dz in positions:
 				x2=pos[0]+dx
 				y2=pos[1]+dy
@@ -266,9 +281,9 @@ class PositionControl():
 
 			return n
 		else:
-			print(50)
+			print(40)
 			#can move in any cardinal position
-			positions=[(0,50,0),(0,-50,0),(50,0,0),(-50,0,0),(30,30,0),(-30,30,0),(-30,-30,0),(30,-30,0),(0,0,15)]
+			positions=[(0,40,0),(0,-40,0),(40,0,0),(-40,0,0),(30,30,0),(-30,30,0),(-30,-30,0),(30,-30,0),(0,0,15)]
 			for dx,dy,dz in positions:
 				x2=pos[0]+dx
 				y2=pos[1]+dy
@@ -298,6 +313,16 @@ class PositionControl():
 
 	def pid(self):
 
+		if(self.chk_no in [2,9,15,22,28,35,41,48,54,61,67,74,80,87,93,100,106,113,120]):
+			req = self.srv_class._request_class(activate_gripper=True)
+			#if needed set any arguments here
+			#rospy.loginfo(req)
+			rospy.wait_for_service(self.service_name)
+			srv_client = rospy.ServiceProxy(self.service_name, self.srv_class)
+			resp = srv_client(req)
+			self.cnt=0
+			if resp.result:
+				self.got_it=True
 		# calculating the error in lat, lon and alt and rescaling the error in lat, lon so that it corresponds to roughly in metres
 		error = [(x1-x2) for (x1,x2) in zip(self.setpoint, self.position)]
 		error[0] = error[0] * 60000#111000
@@ -309,14 +334,15 @@ class PositionControl():
 			#self.setpoint=[19.0007046575,71.9998955286,22.1599967919]
 			#self.flag==1
 			#self.setpoint_set.append(self.setpoint_des)
-			
 		# here, it is checked if the edrone has reached the setpoint and been stable for some time
 		# also the setpoint is changed to the next setpoint if the edrone has reached the required point
 		# if the edrone has reached the final setpoint, the has_reached flag is set to True
-		if self.check_error(error):
+		self.check_error(error)
+		if self.check_error(error) or self.got_it:
 			self.count += 1
 		 	#print(self.count)
 		 	if self.count>=10:
+		 		self.got_it=False
 				self.count = 0
 				self.flag = 0
 		 		self.target = self.setpoint_set[self.chk_no]
@@ -324,14 +350,18 @@ class PositionControl():
 		 			self.chk_no += 1
 		 			print(self.chk_no)
 		 			self.target = self.setpoint_set[self.chk_no]
-		 		if(self.chk_no in [5,18,31,44]):
+		 		if(self.chk_no in [2,9,15,22,28,35,41,48,54,61,67,74,80,87,93,100,106,113,120]):
+		 			self.setpoint[0] = self.setpoint_set[self.chk_no][0]
+		 			self.setpoint[1] = self.setpoint_set[self.chk_no][1]
+		 			self.setpoint[2] = self.position[2]-self.bottom_range[0]-0.125
+		 		elif(self.chk_no in [5,18,31,44,57,70,83,96,109,122]):
 	 				#self.chk_no+=1
 	 				self.setpoint[0] = self.position[0] + self.err_x
 	 				self.setpoint[1] = self.position[1] - self.err_y
 	 				self.setpoint[2] = self.setpoint_set[self.chk_no-1][2]
 	 				self.setpoint_set[self.chk_no] = [self.setpoint[0],self.setpoint[1],self.setpoint[2]]
-	 				self.setpoint_set[self.chk_no+1] = [self.setpoint[0], self.setpoint[1], self.setpoint_set[self.chk_no-1][2]-14.0]
-	 				self.setpoint_set[self.chk_no+2] = [self.setpoint[0], self.setpoint[1], self.setpoint_set[self.chk_no-1][2]-8.0]
+	 				self.setpoint_set[self.chk_no+1] = [self.setpoint[0], self.setpoint[1], self.setpoint_set[self.chk_no-1][2]-13.0]
+	 				self.setpoint_set[self.chk_no+2] = [self.setpoint[0], self.setpoint[1], self.setpoint_set[self.chk_no+3][2]]
 		 		else:
 		 			if abs(self.target[0]-self.position[0])*111000>10 or abs(self.target[1]-self.position[1])*111000>10:
 		 				start=[0.0,0.0,0.0]
@@ -351,7 +381,7 @@ class PositionControl():
 		 		print(self.setpoint)
 
 		#rospy.loginfo(resp)
-		if(self.chk_no in [3,10,16,23,29,36,42,49]):
+		'''if(self.chk_no in [3,10,16,23,29,36,42,49]):
 			while(True):
 				req = self.srv_class._request_class(activate_gripper=True)
 				#if needed set any arguments here
@@ -361,15 +391,18 @@ class PositionControl():
 				resp = srv_client(req)
 				if resp.result:
 					print("package received")
-					break
+					break'''
 
-		if(self.chk_no in [7,13,20,26,33,39,46,52]):
+		if(self.chk_no in [7,13,20,26,33,39,46,52,59,65,72,78,85,91,98,104,111,117,124]):
 			while(True):
+				self.drop=True
 				req = self.srv_class._request_class(activate_gripper=False)
 				rospy.wait_for_service(self.service_name)
 				srv_client = rospy.ServiceProxy(self.service_name, self.srv_class)
 				resp = srv_client(req)
 				if resp.result==False:
+					while(self.cnt<20):
+						self.cnt+=1
 					print("package dropped")
 					break
 				continue			

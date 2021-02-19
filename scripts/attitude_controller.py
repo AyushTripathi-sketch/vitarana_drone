@@ -58,9 +58,9 @@ class Edrone():
 
 		# initial setting of Kp, Kd and ki for [roll, pitch, yaw]. eg: self.Kp[2] corresponds to Kp value in yaw axis
 		# after tuning and computing corresponding PID parameters, change the parameters
-		self.Kp = [28.8,28.8,300]
+		self.Kp = [28.8,28.8,0.6]
 		self.Ki = [0.0,0.0,0.0]
-		self.Kd = [281.7,281.7,203.1]
+		self.Kd = [281.7,281.7,0]
 		# -----------------------Add other required variables for pid here ----------------------------------------------
 		self.min_values = [0, 0, 0, 0]
 		self.max_values = [1024, 1024, 1024, 1024]
@@ -154,7 +154,7 @@ class Edrone():
 
 		#   3. Compute error in each axis. eg: error[0] = self.setpoint_euler[0] - self.drone_orientation_euler[0], where error[0] corresponds to error in roll...
 		self.error = [x1-x2 for (x1,x2) in zip(self.setpoint_euler, self.drone_orientation_euler)]
-
+		self.error[2]=self.error[2]*10000
 		#   4. Compute the error (for proportional), change in error (for derivative) and sum of errors (for integral) in each axis. Refer "Understanding PID.pdf" to understand PID equation.
 		self.differential_error = [x1-x2 for (x1,x2) in zip(self.error,self.prev_error)]
 

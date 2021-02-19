@@ -78,8 +78,8 @@ class image_proc():
 			for (x, y, w, h) in logo:
 				cv2.rectangle(img, (x, y), (x + w, y + h), (255, 255, 0), 2)
 				print(x+w/2,y+h/2)
-				self.msg.err_x_m = ((x+float(w)/2-200)*(20.0)/self.focal_length) #calculating the x_error from drone to marker
-				self.msg.err_y_m = ((y+float(h)/2-200)*(20.0)/self.focal_length) #calculating the y_error from drone to marker
+				self.msg.err_x_m = ((x+float(w)/2-200)*(14.0)/self.focal_length) #calculating the x_error from drone to marker
+				self.msg.err_y_m = ((y+float(h)/2-200)*(14.0)/self.focal_length) #calculating the y_error from drone to marker
 				print(self.msg)
 				#print(self.Z)
 			cv2.imshow('img', img)#display the detected image 
