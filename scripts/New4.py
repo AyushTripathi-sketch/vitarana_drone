@@ -82,7 +82,7 @@ class PositionControl():
 
 		#counter variable to count the time the edrone has been on a specific target setpoint for
 		self.count = self.cnt = self.flag = 0
-		self.chk_no = 1
+		self.chk_no = 92
 		#flag to ascertain if the edrone has reached its final position
 		self.has_reached = self.got_it = False
 
